@@ -1,7 +1,7 @@
 # Makefile for supersaft the bedder file transfer
 # programm from 
 # 
-# Copyright (C) 2002 Christopher Loessl <c.loessl@gmx.net>
+# Copyright (C) 2002 Christopher Loessl <cloessl@x-berg.de>
 # Copyright (C) 2002 Stefan Strigler <steve@zeank.in-berlin.de>
 #
 # This programm is under the GPL 2
@@ -44,10 +44,10 @@ very-clean: clean
 	@rm -f *~ *.bak *.tmp \#*
 
 tar-ball:
-	@tar cvfz supersaft.tgz *.h *.c Makefile AUTHORS ChangeLog COPYING TODO README
+	@tar cvfz supersaft.tgz *.h *.c Makefile README AUTHORS COPYING TODO ChangeLog
 
 bz2-ball:
-	@tar cvfj supersaft.tgz *.h *.c Makefile AUTHORS ChangeLog COPYING TODO README
+	@tar cvfj supersaft.tbz *.h *.c Makefile README AUTHORS COPYING TODO ChangeLog
 
 .SUFFIXES: .c .o
 .PHONY: clean

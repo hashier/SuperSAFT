@@ -1,13 +1,30 @@
+2002-07-26  Christopher Loessl  <cloessl@gmx.net>
+
+	* supersaftc.c:
+		- send FROM
+		- added verbose option
+		- configurable port
+		- just send mode (like netcat)
+	
+	* supersaftd.c:	
+		- Removed debugging messages
+		- added supersaftd.log
+		- verbose mode
+		- accept FROM
+		- use tmpspooldir
+
 Version 0.1.0a
 
-	* supersaftc.c:	Getopt
+    * supersaftc.c: Getopt
 	* Some secure stuff
 
-Version 0.0.4
+2002-07-14  Stefan Strigler  <steve@zeank.in-berlin.de>
 
-	* supersaftc.c: set stdout to unbuffered mode (for progress bar)
-	* supersaftd.c: Bugfix in TO
-	* supersaftd.c: Check if file already exists
+	* supersaftc.c:
+		- set stdout to unbuffered mode (for progress bar)
+	* supersaftd.c:
+		- Bugfix in TO
+		- Check if file already exists
 
 Version 0.0.3
 
@@ -15,7 +32,7 @@ Version 0.0.3
 	* Client now verify if the server has any problems
 	* Server verify if user spool already exist
 	* Client no longer crash if spool dir couldn't create
-	*	Server doenst hang in loop on client crash
+	* Server doenst hang in loop on client crash
 
 Version 0.0.2
 

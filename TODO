@@ -3,7 +3,6 @@ TODO for supersaft:
 * Max speed (bandwidth) [low]
 * "Just send mode". A mode that just sends the file like nc (w/o proto) [low]
 * Write a doc (and resume every time)
-* Add flags (e.g. -d <path> -v <verbose> ......) [mid]
 
 
 SERVER specific;
@@ -12,7 +11,6 @@ SERVER specific;
   hier muss später mal ein kompletter authenfikations-mechanismus eingebaut 
 	werden <- was überlegen! 
 
-* detect if the file already exist [high]
 * resume files [mid]
 * secure connection [low]
 * share dirs for download [very low]
@@ -21,7 +19,6 @@ SERVER specific;
 CLIENT specific;
 
 * QUEUE [very low]
-* display kbits/sek (done)
 * recursiv [mid - high]
   ^^^^^^^^
 	[zeank] todo this we would need something like astratis' makeflat, cause we

@@ -18,10 +18,13 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  *  Created:			2002 07 09
- *  Last updated:	2002 07 13
+ *  Last updated:	2002 07 26
  *
- *  $Id: supersaftc.c,v 1.12 2002/07/22 21:33:33 hashier Exp $
+ *  $Id: supersaftc.c,v 1.13 2002/07/27 10:11:32 hashier Exp $
  *  $Log: supersaftc.c,v $
+ *  Revision 1.13  2002/07/27 10:11:32  hashier
+ *  Some new features
+ *
  *  Revision 1.12  2002/07/22 21:33:33  hashier
  *  use snprintf
  *  use of getopt
@@ -75,7 +78,8 @@
 #include "common.h"
 
 void usage(char *programname) {
-	printf("Usage: %s [-v] <file> <user>@<host>\n", programname);
+	printf("Usage: %s [-v] <file> <user>@<host>[:port]\n", programname);
+	printf("-p for just sending (plan)\n");
 	exit(0);
 }
 
@@ -98,9 +102,8 @@ int get_answer(int fd, char *retval) {
 
 	rcvBytes = recv(fd, buffer, MAXBUF, 0);
 	buffer[rcvBytes] = '\0'; /* terminate string */
-#ifdef DEBUG
-	printf("<<< %s\n", buffer);
-#endif
+	if (verbose)
+		printf("<<< %s\n", buffer);
 
 	/* split buffer on first blank */
 	retval = strchr(buffer, ' '); 
@@ -115,14 +118,17 @@ int main(int argc, char *argv[]) {
 	int transfd; /*this FD is connected to the server */
 	int filefd; /* the FD which is uses to work with the file */
 	int sentBytes = 0; /* number of sen_T_ bytes */
-	float time;
 	int answer;
+	int port;
+	int just_send = 0;
+	float time;
 	char buffer[MAXBUF];
-	char 	*filename,
-				*dest, /* user@host */
-				*user, 
-				*host;
-	int verbose = 0;
+	char 
+		*filename,
+		*dest, /* user@host */
+		*user, 
+		*host,
+		*port_str;
 	struct stat fbuf;
 	struct timeval now, then;
 	struct hostent *he; /* used by gethostbyname */
@@ -133,12 +139,14 @@ int main(int argc, char *argv[]) {
 	extern char *optarg;
 	extern int optind, opterr, optopt;
 	
-	while ((opt=getopt(argc,argv,"vh?")) > 0) {
+
+	while ((opt=getopt(argc,argv,"pvh?")) > 0) {
 		switch (opt) {
-			case ':' :
-			case 'h' :
-			case '?' : usage(argv[0]); break;
-			case 'v' : verbose=1; break;
+		case ':' :
+		case 'h' :
+		case '?' : usage(argv[0]); break;
+		case 'v' : verbose=1; break;
+		case 'p' : just_send=1; break;
 		}
 	}
 
@@ -160,7 +168,13 @@ int main(int argc, char *argv[]) {
 	} else 
 		usage(argv[0]);
 
-	/* Nowwe are trying to establish a connection with the server */
+	port = MY_PORT;
+	if ((port_str=strchr(host, ':'))) { /* split host in port and host */
+		*port_str++ = '\0';
+		port = atoi(port_str);
+	}
+
+	/* Now we are trying to establish a connection with the server */
 	he = gethostbyname(host); /* get the needed infos for the connect */
 
 	if (!he) {
@@ -170,10 +184,10 @@ int main(int argc, char *argv[]) {
 
 	bzero(&self, sizeof(self));
 	self.sin_family = PF_INET;  
-	self.sin_port = htons(MY_PORT);  /* only converting for intel and mac */
+	self.sin_port = htons(port);  /* only converting for intel and mac */
 	self.sin_addr = *((struct in_addr*)he->h_addr);
 
-	if ((transfd=socket(PF_INET, SOCK_STREAM, 0)) < 0) { /* hu? */
+	if ((transfd=socket(PF_INET, SOCK_STREAM, 0)) < 0) { /* No sockets available */
 		perror("socket");
 		return -1;
 	}
@@ -183,13 +197,24 @@ int main(int argc, char *argv[]) {
 			return -1;
 	}
 
+	/* stat on filename */
+	bzero(&fbuf,sizeof(fbuf));
+	stat(filename, &fbuf);
+
 	/* set stdout to unbuffered mode */
 	setvbuf(stdout, (char *)NULL, _IONBF, 0);
 
-#ifdef DEBUG
-	printf("\nGetting servers welcome msg...\n");
-#endif
+	if (just_send)
+		goto JUST_SENDING;
+
+
 	get_answer(transfd, NULL);
+
+	/* ------- FROM ------- */
+	snprintf(buffer, sizeof(buffer), "FROM %s", getenv("USER"));
+	send_buf(transfd, buffer);
+
+	answer = get_answer(transfd, buffer);
 
 	/* ------- TO ------- */
 	snprintf(buffer, sizeof(buffer), "TO %s", user);
@@ -214,9 +239,7 @@ int main(int argc, char *argv[]) {
 	get_answer(transfd, NULL);
 
 	/* ------- SIZE ------- */
-	bzero(&fbuf,sizeof(fbuf));
-	stat(filename, &fbuf);
-	snprintf(buffer, sizeof(buffer), "SIZE %d", (int)fbuf.st_size);
+	snprintf(buffer, sizeof(buffer), "SIZE %d %d", (int)fbuf.st_size, (int)fbuf.st_size);
 	send_buf(transfd, buffer);
 
 	/* answer from SIZE sending */
@@ -237,9 +260,9 @@ int main(int argc, char *argv[]) {
 
 	/* ========== NOW SEND THE FILE ======= */
 
-#ifdef DEBUG
-	printf("ok - sending *fucking* bits to the *fucking* server....\n");
-#endif
+	printf("All OK - Now sending the *fucking* bits to the *fucking* server...\n");
+
+ JUST_SENDING:
 
 	bzero(&then,sizeof(then));
 	gettimeofday(&then,NULL); /* get time before */
@@ -271,6 +294,11 @@ int main(int argc, char *argv[]) {
 		
 	/* now closing the file */
 	close(filefd);
+
+	if (just_send) {
+		close(transfd);
+		exit (0);
+	}
 
 	/* antwort */
 	get_answer(transfd, NULL);

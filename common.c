@@ -35,8 +35,8 @@
  */
 
 #include "common.h"
+#include <string.h>
 
-#define DEBUG
 
 int send_buf(int fd, char *str) {
 	int len = strlen(str);

@@ -20,8 +20,11 @@
  *  Created:			2002 07 09
  *  Last updated:	2002 07 13
  *
- *  $Id: common.h,v 1.6 2002/07/13 17:44:53 hashier Exp $
+ *  $Id: common.h,v 1.7 2002/08/01 15:03:45 hashier Exp $
  *  $Log: common.h,v $
+ *  Revision 1.7  2002/08/01 15:03:45  hashier
+ *  bugfix
+ *
  *  Revision 1.6  2002/07/13 17:44:53  hashier
  *  added cvs log message
  *
@@ -42,6 +45,8 @@
 #define MY_PORT 2546
 
 #define DEBUG
+
+int verbose;
 
 /* ----------------------------------------
  * Just sending files 

@@ -18,10 +18,13 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  *  Created: 			2002 07 07
- *  Last updated	2002 07 13
+ *  Last updated	2002 07 26
  *
- *  $Id: supersaftd.c,v 1.14 2002/07/22 21:33:52 hashier Exp $
+ *  $Id: supersaftd.c,v 1.15 2002/07/27 10:11:32 hashier Exp $
  *  $Log: supersaftd.c,v $
+ *  Revision 1.15  2002/07/27 10:11:32  hashier
+ *  Some new features
+ *
  *  Revision 1.14  2002/07/22 21:33:52  hashier
  *  use snprintf instead of sprintf
  *
@@ -71,6 +74,8 @@
 #include <sys/wait.h>
 #include <dirent.h>
 #include <pwd.h>
+#include <time.h>
+#include <sys/time.h>
 
 #include "common.h"
 
@@ -81,22 +86,22 @@
 #define ALL_SET		0xf
 #define DATA_SET	0x10
 
-#define PERMS	0664
+#define PERMS	0660
 
 char *spooldir;
 
 void serveSocket(int clientfd)
 {
+	int	nr;
 	unsigned int sizeN; /*sizeC;*/         /*N = normal | C = compressed */
 	unsigned char prot_status = 0; /* sets the proto status to '0' */
-	char 	buffer[MAXBUF],
-				hostname[255],
-				*filename,
-				*username;
-	int	nr;
-
-	/* assume from und to already set for now */
-	prot_status |= FROM_SET;
+	char
+		buffer[MAXBUF],
+		hostname[255],
+		*filename,
+		*tmpfilename,
+		*username,
+		*from_str;
 
 	/* send a nice welcome message */
 	gethostname(hostname, 255);
@@ -113,25 +118,43 @@ void serveSocket(int clientfd)
 
 			unsigned int rcvBytes = 0; /* bytes already recevied */
 			int filefd;
+			FILE *logfile;
+			struct timeval now, then;
+			DIR *tmpdir;
+
+			/* create tmp dir */
+			sprintf(buffer, "%s/%s/tmp", spooldir, username);
+
+			if ((tmpdir = opendir(buffer)) == 0) {
+				if ((mkdir(buffer, 0700))<0) {
+					perror("mkdir");
+					printf("ERROR: couldn't create tmp dir %s\n", buffer);
+					break;
+				}
+			} else
+				closedir(tmpdir);
 
 			/* open file for writing */
-			if ((filefd = creat(filename,PERMS)) < 0) { /* houston ... wir
-																										 haben ein
-																										 problem! */
+			if ((filefd = creat(tmpfilename,PERMS)) < 0) { /* houston ... wir haben ein problem! */
 				perror("creat");
-				printf("ERROR: couldn't create file %s\n", filename);
+				printf("ERROR: couldn't create file %s\n", tmpfilename);
 				break; /* giving up - disconnect from client */
 			}
 #ifdef DEBUG
 			printf("opened file, now waiting for data\n");
 #endif
 
+			bzero(&then, sizeof(then));
+			gettimeofday(&then, NULL); /* get time before */
+			
       while (rcvBytes < sizeN) {
 				int tmpBytes;
 				tmpBytes = recv(clientfd, buffer, MAXBUF, 0);
-#ifdef DEBUG
-				printf("received %d bytes\n", tmpBytes);
-#endif
+				/* 
+					 #ifdef DEBUG
+					 printf("received %d bytes\n", tmpBytes);
+					 #endif
+				*/
 				if (rcvBytes+tmpBytes > sizeN) /* hu? received too much */
 					tmpBytes = sizeN-rcvBytes;  /* cut it to expected size */
 				write(filefd, buffer, tmpBytes);
@@ -142,11 +165,36 @@ void serveSocket(int clientfd)
 				}
 			}
 			
+			bzero(&now, sizeof(now));
+			gettimeofday(&now, NULL);
+
 			close(filefd);
 			
-			if (sizeN == rcvBytes)
-				sprintf(buffer, "201 File has been correctly received.");
+			if (sizeN == rcvBytes) {
+				/* copy file from to tmp dir to user's spooldir */
+				if (rename(tmpfilename, filename) < 0) {
+					perror("rename");
+					sprintf(buffer, "599 Unknown error.");
+				} else
+					sprintf(buffer, "201 File has been correctly received.");
+			}
 			send_buf(clientfd, buffer);
+
+			/* make a logfile entry */
+			sprintf(buffer, "%s/supersaftd.log", spooldir);
+			if ((logfile = fopen(buffer, "a+")) == NULL)
+				perror("fopen");
+			else {
+				char *datestr;
+				filename = strrchr(filename, '/');
+				filename++;
+				datestr = ctime((time_t *) &now.tv_sec);
+				datestr[strlen(datestr)-1] = '\0';
+				
+				fprintf(logfile, "\"%s\",\"%s\",\"%s\",\"%s\",\"%d\",\"%f\"\n", datestr, from_str, username, filename, sizeN, (now.tv_sec - then.tv_sec)*1.0f + (now.tv_usec - then.tv_usec)/1000000.0f);
+				
+				fclose(logfile);
+			}
 			
 			prot_status = FROM_SET; /* reset protocoll stack */
 			continue;
@@ -160,9 +208,8 @@ void serveSocket(int clientfd)
 		/* remove trailing \r\n from buffer */
 		buffer[nr-2] = '\0'; 
 		
-#ifdef DEBUG
-		printf("<<< %s\n",buffer);
-#endif
+		if (verbose)
+			printf("<<< %s\n",buffer);
 		
 		if (nr > 0) { /* recevied a command */
 
@@ -176,7 +223,7 @@ void serveSocket(int clientfd)
 
 			/* compare command - serve command */
 
-			if (strcmp(cmd,"FILE") == 0) {
+			if (strcmp(cmd, "FILE") == 0) {
 
 				/* ========== FILE ========== */
 
@@ -194,7 +241,7 @@ void serveSocket(int clientfd)
 					sprintf(buffer, "200 Command o.k.");
 				}
 				send_buf(clientfd, buffer);
-			} else if (strcmp(cmd,"SIZE") == 0) {
+			} else if (strcmp(cmd, "SIZE") == 0) {
 
 				/* ========== SIZE ========== */
 
@@ -208,7 +255,22 @@ void serveSocket(int clientfd)
 					sprintf(buffer, "200 Command o.k.");
 				}
 				send_buf(clientfd, buffer);
-			} else if (strcmp(cmd,"TO") == 0) {
+
+			} else if (strcmp(cmd, "FROM") == 0) {
+
+				/* ========== FROM ========== */
+				
+				if (tail == NULL)
+					sprintf(buffer, "505 Missing argument.");
+				else {
+					prot_status |= FROM_SET;
+				  from_str = strdup(tail);
+					
+					sprintf(buffer, "200 Command o.k.");
+				}
+				send_buf(clientfd, buffer);
+
+			} else if (strcmp(cmd, "TO") == 0) {
 
 				/* ========== TO ========== */
 
@@ -222,8 +284,7 @@ void serveSocket(int clientfd)
 						if (prot_status & TO_SET)
 							prot_status ^= TO_SET; /* reset TO_SET */
 
-						while ((user=getpwent()) != NULL) { /* for all users in 
-																								 * /etc/passwd */
+						while ((user=getpwent()) != NULL) { /* for all users in /etc/passwd */
 							if (strcmp(tail,user->pw_name) == 0) { /* user found */
 								username = strdup(tail);
 								prot_status |= TO_SET;
@@ -241,25 +302,25 @@ void serveSocket(int clientfd)
 
 				/* ========== DATA ========== */
 
-				if ((prot_status & ALL_SET) == ALL_SET) { /* user is now allowed
-																										 to _send_ _files_ */
+				if ((prot_status & ALL_SET) == ALL_SET) { /* user is now allowed to _send_ _files_ */
 
 					DIR *userdir;
 #ifdef DEBUG
 					printf("filename: %s\n", filename);
 #endif
 					/* build the path where the file should be stored */
+					snprintf(buffer, sizeof(buffer), "%s/%s/tmp/%s", spooldir, username, filename);
+					tmpfilename = strdup(buffer);
 					snprintf(buffer, sizeof(buffer), "%s/%s/%s", spooldir, username, filename);
 					filename = strdup(buffer);
-					
+
 #ifdef DEBUG
 					printf("Path set to %s\n", filename);
 #endif
 
 					snprintf(buffer, sizeof(buffer), "%s/%s", spooldir, username);
 
-					if ((userdir=opendir(buffer)) == NULL) { /* we've got to create the
-																							directory first */
+					if ((userdir=opendir(buffer)) == NULL) { /* we've got to create the directory first */
 
 						if ((mkdir(buffer, 0700)) < 0) {
 							sprintf(buffer, "411 Can`t create user spool directory.");
@@ -269,11 +330,11 @@ void serveSocket(int clientfd)
 						}
 					} else { /* directory already exists */
 						int tmpfd;
-						closedir(userdir); /* close dir again */
+						closedir(userdir); /* close dir */
 
 						/* check if file already exists */
 						if ((tmpfd = open(filename, O_RDONLY)) < 0) { /* no such file */
-							/*remember state */
+							/* remember state */
 							prot_status |= DATA_SET; 
 							sprintf(buffer,"302 Header ok, send data.");
 						} else { /* file exists */
@@ -338,18 +399,19 @@ int main(int argc, char *argv[])
 	port = MY_PORT;
 	spooldir = strdup("./");
 
-	while ((opt=getopt(argc,argv,"d:p:h?")) > 0) {
+	while ((opt=getopt(argc,argv,"vd:p:h?")) > 0) {
 		switch (opt) {
-			case ':' :
-			case 'h' :
-			case '?' : exit(usage(argv[0])); break;
-			case 'd' : spooldir=optarg; break;
-			case 'p' : port=atoi(optarg); break;	
+		case ':' :
+		case 'h' :
+		case '?' : exit(usage(argv[0])); break;
+		case 'd' : spooldir=optarg; break;
+		case 'p' : port=atoi(optarg); break;	
+		case 'v' : verbose = 1; break;
 		}
 	}
-#ifdef DEBUG
-	printf("spooldir set to: %s, port set to: %d\n", spooldir, port);
-#endif
+
+	if (verbose)
+		printf("Verbose: %d\nspooldir set to: %s, port set to: %d\n", verbose, spooldir, port);
 	
 	/* Create streaming socket */
 	if ((sockfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
@@ -379,6 +441,8 @@ int main(int argc, char *argv[])
 		perror("listen");
 		exit(errno);
 	}
+
+	printf("\nDaemon started successfully ...\n");
 
 	/* Forever... */
 	while (1) {
