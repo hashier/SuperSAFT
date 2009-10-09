@@ -1,4 +1,9 @@
-2002-07-14  Stefan Strigler  <steve@zeank.in-berlin.de>
+Version 0.1.0a
+
+	* supersaftc.c:	Getopt
+	* Some secure stuff
+
+Version 0.0.4
 
 	* supersaftc.c: set stdout to unbuffered mode (for progress bar)
 	* supersaftd.c: Bugfix in TO

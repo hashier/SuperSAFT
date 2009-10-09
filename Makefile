@@ -44,10 +44,10 @@ very-clean: clean
 	@rm -f *~ *.bak *.tmp \#*
 
 tar-ball:
-	@tar cvfz supersaft.tgz *.h *.c Makefile
+	@tar cvfz supersaft.tgz *.h *.c Makefile AUTHORS ChangeLog COPYING TODO README
 
 bz2-ball:
-	@tar cvfj supersaft.tgz *.h *.c Makefile 
+	@tar cvfj supersaft.tgz *.h *.c Makefile AUTHORS ChangeLog COPYING TODO README
 
 .SUFFIXES: .c .o
 .PHONY: clean

@@ -20,8 +20,12 @@
  *  Created:			2002 07 09
  *  Last updated:	2002 07 13
  *
- *  $Id: supersaftc.c,v 1.11 2002/07/14 10:34:32 zeank Exp $
+ *  $Id: supersaftc.c,v 1.12 2002/07/22 21:33:33 hashier Exp $
  *  $Log: supersaftc.c,v $
+ *  Revision 1.12  2002/07/22 21:33:33  hashier
+ *  use snprintf
+ *  use of getopt
+ *
  *  Revision 1.11  2002/07/14 10:34:32  zeank
  *  enhanced progress bar
  *
@@ -71,7 +75,7 @@
 #include "common.h"
 
 void usage(char *programname) {
-	printf("Usage: %s <file> <user>@<host>\n",programname);
+	printf("Usage: %s [-v] <file> <user>@<host>\n", programname);
 	exit(0);
 }
 
@@ -114,27 +118,45 @@ int main(int argc, char *argv[]) {
 	float time;
 	int answer;
 	char buffer[MAXBUF];
-	char *user, *host;
+	char 	*filename,
+				*dest, /* user@host */
+				*user, 
+				*host;
+	int verbose = 0;
 	struct stat fbuf;
 	struct timeval now, then;
 	struct hostent *he; /* used by gethostbyname */
 	struct sockaddr_in self; /* where do we connect to */
-	
-	/* set stdout to unbuffered mode */
-	setvbuf(stdout, (char *)NULL, _IONBF, 0);
 
-	if(argc <= 2)
+	/* stuff for getopt */
+	int opt;
+	extern char *optarg;
+	extern int optind, opterr, optopt;
+	
+	while ((opt=getopt(argc,argv,"vh?")) > 0) {
+		switch (opt) {
+			case ':' :
+			case 'h' :
+			case '?' : usage(argv[0]); break;
+			case 'v' : verbose=1; break;
+		}
+	}
+
+	if (argc < optind+2)
 		usage(argv[0]);
+
+	filename = argv[optind++];
+	dest = argv[optind++];
 	
 	/* open the file read-only */
-	if ((filefd = open(argv[1], O_RDONLY)) < 0) {
+	if ((filefd = open(filename, O_RDONLY)) < 0) {
 			perror("open");
 			return -1;
 	}
 
-	if ((host=strchr(argv[2], '@'))) { /* look for an @ */
+	if ((host=strchr(dest, '@'))) { /* look for an @ */
 		*host++ = '\0'; /* split */
-		user = argv[2];
+		user = dest;
 	} else 
 		usage(argv[0]);
 
@@ -161,13 +183,16 @@ int main(int argc, char *argv[]) {
 			return -1;
 	}
 
+	/* set stdout to unbuffered mode */
+	setvbuf(stdout, (char *)NULL, _IONBF, 0);
+
 #ifdef DEBUG
 	printf("\nGetting servers welcome msg...\n");
 #endif
 	get_answer(transfd, NULL);
 
 	/* ------- TO ------- */
-	sprintf(buffer, "TO %s", user);
+	snprintf(buffer, sizeof(buffer), "TO %s", user);
 	send_buf(transfd, buffer);
 
 	/* gettin' answer from the fucking server */
@@ -182,7 +207,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	/* ------- FILENAME ------- */
-	sprintf(buffer, "FILE %s", argv[1]);
+	snprintf(buffer, sizeof(buffer), "FILE %s", filename);
 	send_buf(transfd, buffer);
 
 	/* get answer */ 
@@ -190,8 +215,8 @@ int main(int argc, char *argv[]) {
 
 	/* ------- SIZE ------- */
 	bzero(&fbuf,sizeof(fbuf));
-	stat(argv[1], &fbuf);
-	sprintf(buffer, "SIZE %d", (int)fbuf.st_size);
+	stat(filename, &fbuf);
+	snprintf(buffer, sizeof(buffer), "SIZE %d", (int)fbuf.st_size);
 	send_buf(transfd, buffer);
 
 	/* answer from SIZE sending */

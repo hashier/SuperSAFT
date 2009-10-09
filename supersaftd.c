@@ -20,8 +20,11 @@
  *  Created: 			2002 07 07
  *  Last updated	2002 07 13
  *
- *  $Id: supersaftd.c,v 1.13 2002/07/14 11:54:19 hashier Exp $
+ *  $Id: supersaftd.c,v 1.14 2002/07/22 21:33:52 hashier Exp $
  *  $Log: supersaftd.c,v $
+ *  Revision 1.14  2002/07/22 21:33:52  hashier
+ *  use snprintf instead of sprintf
+ *
  *  Revision 1.13  2002/07/14 11:54:19  hashier
  *  check if file exists
  *
@@ -97,7 +100,7 @@ void serveSocket(int clientfd)
 
 	/* send a nice welcome message */
 	gethostname(hostname, 255);
-	sprintf(buffer, "220 %s SUPERSAFT server ready.", hostname); 
+	snprintf(buffer, sizeof(buffer), "220 %s SUPERSAFT server ready.", hostname); 
 	send_buf(clientfd, buffer);
 
 	while(1) {
@@ -246,14 +249,14 @@ void serveSocket(int clientfd)
 					printf("filename: %s\n", filename);
 #endif
 					/* build the path where the file should be stored */
-					sprintf(buffer, "%s/%s/%s", spooldir, username, filename);
+					snprintf(buffer, sizeof(buffer), "%s/%s/%s", spooldir, username, filename);
 					filename = strdup(buffer);
 					
 #ifdef DEBUG
 					printf("Path set to %s\n", filename);
 #endif
 
-					sprintf(buffer, "%s/%s", spooldir, username);
+					snprintf(buffer, sizeof(buffer), "%s/%s", spooldir, username);
 
 					if ((userdir=opendir(buffer)) == NULL) { /* we've got to create the
 																							directory first */
