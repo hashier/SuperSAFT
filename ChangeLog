@@ -1,0 +1,31 @@
+2002-07-14  Stefan Strigler  <steve@zeank.in-berlin.de>
+
+	* supersaftc.c: set stdout to unbuffered mode (for progress bar)
+	* supersaftd.c: Bugfix in TO
+	* supersaftd.c: Check if file already exists
+
+Version 0.0.3
+
+	* Some bugfixes
+	* Client now verify if the server has any problems
+	* Server verify if user spool already exist
+	* Client no longer crash if spool dir couldn't create
+	*	Server doenst hang in loop on client crash
+
+Version 0.0.2
+
+	* Nice Statusbar
+	* Fixed bug in daemon
+	* Server doesn't accept filename containing "/" (just takes last part)
+	* Testing if host is runing a server
+	* If file doens't exist (local), no connection to the server will be created.
+	* server and client now know about TO command and use it :)
+		now FILE, SIZE, TO and DATA is required to send a file
+	* server uses spooldir now store files
+	* Create user dir under the spool dir where files get really stored
+
+Version 0.0.1
+
+	* Just file transfer after authentification
+		FILE, SIZE required to set DATA
+		DATA required to send DATA

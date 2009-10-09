@@ -1,0 +1,29 @@
+What's supersaft?
+
+
+Contents
+
+
+1. About
+2. How to install
+3. How to use
+
+
+
+
+1.
+	supersaft is a small programm to transfer a file/files/folders from
+	one computer to another computer
+
+
+2.
+	tar xvfj supersaft-<version>.tar.bz2
+	cd supersaft-<version>
+	make
+
+3.
+	Start the server
+		./supersaftd <-d path> <-p port>
+
+	And use the client with
+		./supersaftc <file> <user>@<host>

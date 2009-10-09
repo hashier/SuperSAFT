@@ -1,0 +1,32 @@
+TODO for supersaft:
+
+* Max speed (bandwidth) [low]
+* "Just send mode". A mode that just sends the file like nc (w/o proto) [low]
+* Write a doc (and resume every time)
+* Add flags (e.g. -d <path> -v <verbose> ......) [mid]
+
+
+SERVER specific;
+
+* FROM [mid]
+  hier muss später mal ein kompletter authenfikations-mechanismus eingebaut 
+	werden <- was überlegen! 
+
+* detect if the file already exist [high]
+* resume files [mid]
+* secure connection [low]
+* share dirs for download [very low]
+
+
+CLIENT specific;
+
+* QUEUE [very low]
+* display kbits/sek (done)
+* recursiv [mid - high]
+  ^^^^^^^^
+	[zeank] todo this we would need something like astratis' makeflat, cause we
+					don't want to allow subdirs in the spool, so we need a way to make
+					sure that we don't get stuck in a name clash
+
+* replace wget (((: HARHAR	include HTTP 1.1 and HTTP 1.0
+
